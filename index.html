@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flash Maths CM1</title>
+<style>
+  :root { --bg:#f5f3ee; --card:#fff; --ink:#222; --accent:#2b6cb0; --accent-d:#1f4f85; --line:#ddd8cc; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  header { padding:20px 16px 8px; text-align:center; }
+  h1 { margin:0 0 6px; font-size:1.6rem; }
+  header p { margin:0 0 14px; color:#666; }
+  button, .btn {
+    display:inline-block; font:inherit; font-size:.95rem; padding:8px 14px; border:0; border-radius:6px;
+    background:var(--accent); color:#fff; cursor:pointer; text-decoration:none; text-align:center;
+  }
+  button:hover, .btn:hover { background:var(--accent-d); }
+  button:disabled { opacity:.6; cursor:wait; }
+  #all { font-size:1.05rem; padding:11px 22px; }
+  #status { min-height:1.4em; margin-top:8px; font-size:.9rem; color:#666; }
+  main { max-width:1200px; margin:0 auto; padding:12px 16px 40px; display:grid; gap:16px;
+         grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); }
+  figure { margin:0; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:8px; }
+  figure img { width:100%; aspect-ratio:3/4; object-fit:cover; border-radius:4px; cursor:zoom-in; display:block; background:#eee; }
+  figcaption { font-size:.85rem; color:#666; text-align:center; }
+  figure .btn { width:100%; }
+
+  #lb { position:fixed; inset:0; background:rgba(0,0,0,.92); display:none; align-items:center; justify-content:center; flex-direction:column; z-index:10; }
+  #lb.open { display:flex; }
+  #lb img { max-width:96vw; max-height:84vh; object-fit:contain; }
+  #lb .bar { display:flex; gap:10px; align-items:center; margin-top:12px; color:#fff; }
+  #lb .bar button, #lb .bar .btn { background:#444; }
+  #lb .bar button:hover, #lb .bar .btn:hover { background:#666; }
+  #lb .close { position:absolute; top:10px; right:14px; font-size:1.6rem; line-height:1; padding:6px 12px; background:#444; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Flash Maths CM1</h1>
+  <p>35 pages en photo. Cliquer sur une vignette pour l'agrandir.</p>
+  <button id="all" type="button">Tout télécharger (.zip)</button>
+  <div id="status" role="status"></div>
+</header>
+
+<main id="grid"></main>
+
+<div id="lb" role="dialog" aria-modal="true" aria-label="Photo agrandie">
+  <button class="close" type="button" aria-label="Fermer">×</button>
+  <img id="lb-img" alt="">
+  <div class="bar">
+    <button id="prev" type="button">‹ Précédente</button>
+    <span id="lb-n"></span>
+    <a id="lb-dl" class="btn" download>Télécharger</a>
+    <button id="next" type="button">Suivante ›</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(function () {
+  var TOTAL = 35;
+  var files = [];
+  for (var i = 1; i <= TOTAL; i++) files.push('FlashMathsCM1_' + String(i).padStart(2, '0') + '.jpg');
+
+  var grid = document.getElementById('grid');
+  files.forEach(function (f, idx) {
+    var fig = document.createElement('figure');
+    var img = document.createElement('img');
+    img.src = 'thumbs/' + f;
+    img.alt = 'Page ' + (idx + 1);
+    img.loading = 'lazy';
+    img.addEventListener('click', function () { openLb(idx); });
+    var cap = document.createElement('figcaption');
+    cap.textContent = 'Page ' + (idx + 1);
+    var dl = document.createElement('a');
+    dl.className = 'btn';
+    dl.href = 'photos/' + f;
+    dl.download = f;
+    dl.textContent = 'Télécharger';
+    fig.append(img, cap, dl);
+    grid.appendChild(fig);
+  });
+
+  // Visionneuse
+  var lb = document.getElementById('lb');
+  var lbImg = document.getElementById('lb-img');
+  var lbN = document.getElementById('lb-n');
+  var lbDl = document.getElementById('lb-dl');
+  var cur = 0;
+  function show(i) {
+    cur = (i + TOTAL) % TOTAL;
+    lbImg.src = 'photos/' + files[cur];
+    lbImg.alt = 'Page ' + (cur + 1);
+    lbN.textContent = (cur + 1) + ' / ' + TOTAL;
+    lbDl.href = 'photos/' + files[cur];
+    lbDl.download = files[cur];
+  }
+  function openLb(i) { show(i); lb.classList.add('open'); document.body.style.overflow = 'hidden'; }
+  function closeLb() { lb.classList.remove('open'); lbImg.removeAttribute('src'); document.body.style.overflow = ''; }
+  document.querySelector('#lb .close').addEventListener('click', closeLb);
+  document.getElementById('prev').addEventListener('click', function () { show(cur - 1); });
+  document.getElementById('next').addEventListener('click', function () { show(cur + 1); });
+  lb.addEventListener('click', function (e) { if (e.target === lb) closeLb(); });
+  document.addEventListener('keydown', function (e) {
+    if (!lb.classList.contains('open')) return;
+    if (e.key === 'Escape') closeLb();
+    else if (e.key === 'ArrowLeft') show(cur - 1);
+    else if (e.key === 'ArrowRight') show(cur + 1);
+  });
+
+  // Tout télécharger en .zip
+  var allBtn = document.getElementById('all');
+  var status = document.getElementById('status');
+  allBtn.addEventListener('click', async function () {
+    if (typeof JSZip === 'undefined') { status.textContent = 'Bibliothèque zip indisponible (vérifier la connexion).'; return; }
+    allBtn.disabled = true;
+    try {
+      var zip = new JSZip();
+      for (var i = 0; i < files.length; i++) {
+        status.textContent = 'Préparation… ' + (i + 1) + ' / ' + TOTAL;
+        var res = await fetch('photos/' + files[i]);
+        if (!res.ok) throw new Error(files[i]);
+        zip.file(files[i], await res.blob());
+      }
+      var blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' }, function (m) {
+        status.textContent = 'Création du zip… ' + Math.round(m.percent) + ' %';
+      });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'FlashMathsCM1.zip';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 10000);
+      status.textContent = 'Zip téléchargé.';
+    } catch (err) {
+      status.textContent = 'Échec du téléchargement (' + err.message + '). Réessayer.';
+    } finally {
+      allBtn.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>
